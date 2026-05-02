@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>F1 Slot Watcher · Accra</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0a0e1a; --surface:#111827; --border:#1e2d45;
+  --accent:#00c6ff; --accent2:#f5a623; --danger:#ff4d6d;
+  --success:#00e676; --text:#e8edf5; --muted:#5a6a85; --card:#131c2e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,198,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,198,255,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.container{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:1.5rem 1.25rem 5rem}
+
+/* Header */
+header{text-align:center;margin-bottom:1.75rem;padding-top:.5rem}
+.badge{display:inline-block;font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:.2rem .65rem;border-radius:2px;margin-bottom:.75rem;opacity:.85}
+h1{font-size:clamp(1.5rem,5vw,2.2rem);font-weight:700;line-height:1.15;letter-spacing:-.02em;margin-bottom:.35rem}
+h1 span{color:var(--accent)}
+.subtitle{font-size:.82rem;color:var(--muted);font-weight:300}
+
+/* Tabs */
+.tabs{display:flex;gap:.5rem;margin-bottom:1.25rem;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.35rem}
+.tab-btn{flex:1;padding:.55rem .5rem;background:transparent;border:none;border-radius:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.tab-btn.active{background:var(--surface);color:var(--accent);border:1px solid var(--border)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Countdown */
+.countdown-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.1rem;text-align:center;position:relative;overflow:hidden}
+.countdown-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.countdown-label{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem}
+.countdown-display{font-family:'Space Mono',monospace;font-size:clamp(2.2rem,10vw,3.6rem);font-weight:700;color:var(--accent);letter-spacing:.05em;line-height:1;text-shadow:0 0 30px rgba(0,198,255,.3);transition:color .3s}
+.countdown-display.urgent{color:var(--accent2);text-shadow:0 0 30px rgba(245,166,35,.3)}
+.countdown-display.overdue{color:var(--danger);text-shadow:0 0 30px rgba(255,77,109,.3);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.countdown-sub{font-size:.75rem;color:var(--muted);margin-top:.5rem}
+
+/* Stats */
+.status-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.1rem}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem}
+.stat-label{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;font-family:'Space Mono',monospace}
+.stat-value{font-size:1.25rem;font-weight:700;color:var(--text)}
+.stat-value.green{color:var(--success)}.stat-value.orange{color:var(--accent2)}.stat-value.red{color:var(--danger)}
+
+/* Check button */
+.check-btn{width:100%;padding:1rem;background:linear-gradient(135deg,#0066cc,#00c6ff);color:#fff;font-family:'Sora',sans-serif;font-size:1rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;letter-spacing:.01em;transition:all .2s;margin-bottom:.75rem;position:relative;overflow:hidden;user-select:none;-webkit-user-select:none}
+.check-btn:not(:disabled):hover{filter:brightness(1.1)}
+.check-btn:not(:disabled):active{transform:scale(.98)}
+.check-btn.just-checked{background:linear-gradient(135deg,#00874a,#00e676)!important}
+.check-btn:disabled{cursor:not-allowed;background:var(--surface)!important;color:var(--muted)!important;border:1px solid var(--border);filter:none!important;transform:none!important}
+
+/* Cooldown bar */
+.cooldown-bar-wrap{width:100%;height:4px;background:var(--border);border-radius:2px;margin-bottom:1.1rem;overflow:hidden;display:none}
+.cooldown-bar-wrap.visible{display:block}
+.cooldown-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;width:0%;transition:width 1s linear}
+
+/* Log */
+.log-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:1.1rem}
+.log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem}
+.log-title{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sm-btn{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:.2rem .5rem;cursor:pointer;transition:color .2s,border-color .2s}
+.sm-btn:hover{color:var(--danger);border-color:var(--danger)}
+.log-empty{text-align:center;color:var(--muted);font-size:.78rem;padding:1.25rem 0;font-style:italic}
+.log-entry{display:flex;justify-content:space-between;align-items:center;padding:.55rem 0;border-bottom:1px solid var(--border);animation:fadeIn .3s ease}
+.log-entry:last-child{border-bottom:none}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+.log-time{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--accent)}
+.log-gap{font-size:.7rem;color:var(--muted)}
+.log-gap.safe{color:var(--success)}.log-gap.warn{color:var(--accent2)}.log-gap.bad{color:var(--danger)}
+
+/* Analytics */
+.analytics-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.1rem}
+.analytics-title{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+.analytics-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.bar-chart{display:flex;align-items:flex-end;gap:.4rem;height:100px;margin-bottom:.5rem}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:.3rem}
+.bar-track{width:100%;background:var(--border);border-radius:4px 4px 0 0;position:relative;height:80px;display:flex;align-items:flex-end}
+.bar-fill{width:100%;border-radius:4px 4px 0 0;transition:height .5s cubic-bezier(.34,1.56,.64,1);min-height:0}
+.bar-fill.ok{background:linear-gradient(180deg,var(--success),#009944)}
+.bar-fill.med{background:linear-gradient(180deg,var(--accent2),#b87000)}
+.bar-fill.zero{background:var(--border)}
+.bar-count{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted)}
+.bar-day{font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);text-transform:uppercase}
+.chart-legend{display:flex;gap:1rem;margin-top:.75rem}
+.legend-item{display:flex;align-items:center;gap:.35rem;font-size:.65rem;color:var(--muted)}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+.week-summary{margin-top:.5rem}
+.week-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.78rem}
+.week-row:last-child{border-bottom:none}
+.week-row-label{color:var(--muted)}
+.week-row-val{font-family:'Space Mono',monospace;font-weight:700}
+.heatmap-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:.5rem}
+.heatmap-cell{aspect-ratio:1;border-radius:3px;cursor:default;transition:transform .15s}
+.heatmap-cell:hover{transform:scale(1.2);z-index:2;position:relative}
+.heatmap-cell[data-count="0"]{background:var(--border)}
+.heatmap-cell[data-count="1"]{background:#005f3f}
+.heatmap-cell[data-count="2"]{background:#00874a}
+.heatmap-cell[data-count="3"]{background:#00b860}
+.heatmap-cell[data-count="4"]{background:var(--success)}
+.heatmap-cell[data-count="5"]{background:#7fffbf}
+.heatmap-label{font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);text-align:center}
+
+/* Settings */
+.settings-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.1rem}
+.settings-title{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+.setting-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem}
+.setting-row:last-child{margin-bottom:0}
+.setting-label{font-size:.82rem;color:var(--text)}
+.setting-label small{display:block;font-size:.65rem;color:var(--muted);margin-top:.1rem}
+.interval-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:.72rem;padding:.38rem .55rem;border-radius:6px;cursor:pointer;outline:none}
+.interval-select:focus{border-color:var(--accent)}
+.toggle{position:relative;width:42px;height:22px;flex-shrink:0}
+.toggle input{display:none}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:11px;cursor:pointer;transition:background .25s}
+.toggle input:checked+.toggle-track{background:var(--accent)}
+.toggle-track::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .25s}
+.toggle input:checked+.toggle-track::after{transform:translateX(20px)}
+
+/* Info */
+.info-box{background:rgba(0,198,255,.05);border:1px solid rgba(0,198,255,.2);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:1.1rem;font-size:.76rem;line-height:1.6;color:#a0b4cc}
+.info-box strong{color:var(--accent)}
+.portal-btn{display:block;width:100%;padding:.8rem;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.04em;text-decoration:none;text-align:center;border-radius:8px;transition:all .2s;margin-bottom:.65rem}
+.portal-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,198,255,.04)}
+.notif-banner{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(120px);background:var(--success);color:#000;font-weight:600;font-size:.8rem;padding:.7rem 1.4rem;border-radius:50px;white-space:nowrap;transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:999;pointer-events:none}
+.notif-banner.show{transform:translateX(-50%) translateY(0)}
+.notif-banner.warn-banner{background:var(--accent2);color:#000}
+.notif-banner.err-banner{background:var(--danger);color:#fff}
+footer{text-align:center;font-family:'Space Mono',monospace;font-size:.57rem;color:var(--muted);letter-spacing:.08em;margin-top:2rem;opacity:.4}
+@media(max-width:400px){.status-row{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="badge">🇬🇭 Accra · F1 Visa Tracker</div>
+    <h1>Slot<span>Watcher</span></h1>
+    <p class="subtitle">Safe interval checking · No account suspensions</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('tracker')">Tracker</button>
+    <button class="tab-btn" onclick="switchTab('analytics')">Analytics</button>
+    <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+  </div>
+
+  <!-- TRACKER TAB -->
+  <div class="tab-panel active" id="tab-tracker">
+    <div class="countdown-card">
+      <div class="countdown-label">Next safe check in</div>
+      <div class="countdown-display" id="countdown">--:--:--</div>
+      <div class="countdown-sub" id="countdown-sub">Log your first check to start the timer</div>
+    </div>
+    <div class="status-row">
+      <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="stat-total">0</div></div>
+      <div class="stat-card"><div class="stat-label">This Week</div><div class="stat-value green" id="stat-week">0</div></div>
+      <div class="stat-card"><div class="stat-label">Today</div><div class="stat-value orange" id="stat-today">0</div></div>
+    </div>
+    <div class="info-box" id="urgency-box" style="display:none"><strong id="urgency-text"></strong></div>
+    <button class="check-btn" id="check-btn" onclick="logCheck()">✓ &nbsp;I Just Checked the Portal</button>
+    <div class="cooldown-bar-wrap" id="cooldown-wrap"><div class="cooldown-bar" id="cooldown-bar"></div></div>
+    <div class="log-card">
+      <div class="log-header">
+        <span class="log-title">Check History</span>
+        <button class="sm-btn" onclick="clearLog()">Clear All</button>
+      </div>
+      <div id="log-list"><div class="log-empty">No checks logged yet.</div></div>
+    </div>
+    <a class="portal-btn" href="https://www.usvisaappt.com/visa/page?country=GH&locale=en" target="_blank" rel="noopener">→ Open US Visa Appt Portal (Ghana)</a>
+    <a class="portal-btn" href="https://visagrader.com/us-visa-time-slots-availability/ghana-gha/accra-P4/f1-visa-F1" target="_blank" rel="noopener">→ VisaGrader · Accra F1 Slots</a>
+    <a class="portal-btn" href="https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/global-visa-wait-times.html" target="_blank" rel="noopener">→ US State Dept · Wait Times</a>
+  </div>
+
+  <!-- ANALYTICS TAB -->
+  <div class="tab-panel" id="tab-analytics">
+    <div class="analytics-card">
+      <div class="analytics-header">
+        <span class="analytics-title">Checks This Week</span>
+        <button class="sm-btn" style="color:var(--accent2);border-color:var(--accent2)" onclick="resetWeek()">Reset Week</button>
+      </div>
+      <div class="bar-chart" id="bar-chart"></div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div>Safe (≥3h gap)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>Risky (&lt;3h gap)</div>
+      </div>
+    </div>
+    <div class="analytics-card">
+      <div class="analytics-title">Weekly Summary</div>
+      <div id="week-summary"></div>
+    </div>
+    <div class="analytics-card">
+      <div class="analytics-title">28-Day Heatmap</div>
+      <div class="heatmap-grid" id="heatmap"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:.4rem">
+        <span class="heatmap-label">28 days ago</span>
+        <span class="heatmap-label">Today</span>
+      </div>
+    </div>
+    <div class="status-row" style="margin-bottom:1.1rem">
+      <div class="stat-card"><div class="stat-label">Best Day</div><div class="stat-value green" id="stat-best">—</div></div>
+      <div class="stat-card"><div class="stat-label">Avg/Day</div><div class="stat-value" id="stat-avg">—</div></div>
+      <div class="stat-card"><div class="stat-label">Streak</div><div class="stat-value orange" id="stat-streak">0d</div></div>
+    </div>
+    <div class="info-box" id="risky-box" style="display:none"><strong id="risky-text"></strong></div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="tab-panel" id="tab-settings">
+    <div class="settings-card">
+      <div class="settings-title">Timing</div>
+      <div class="setting-row">
+        <div class="setting-label">Check interval<small>Min 3h — safe threshold</small></div>
+        <select class="interval-select" id="interval-select" onchange="saveInterval()">
+          <option value="3">Every 3h</option>
+          <option value="4" selected>Every 4h</option>
+          <option value="6">Every 6h</option>
+          <option value="8">Every 8h</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Button lockout<small>Min gap before re-logging</small></div>
+        <select class="interval-select" id="lockout-select" onchange="saveLockout()">
+          <option value="20">20 min</option>
+          <option value="40" selected>40 min</option>
+          <option value="60">60 min</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Program start date<small>For expedited eligibility</small></div>
+        <input type="date" id="start-date" class="interval-select" style="width:130px" onchange="saveStartDate()"/>
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-title">Notifications</div>
+      <div class="setting-row">
+        <div class="setting-label">Notification engine<small id="sw-status-text">Checking…</small></div>
+        <span id="sw-status-badge" style="font-family:'Space Mono',monospace;font-size:.62rem;padding:.2rem .5rem;border-radius:4px;background:var(--border);color:var(--muted)">—</span>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Browser notifications<small>Alert when it's time to check</small></div>
+        <label class="toggle"><input type="checkbox" id="notif-toggle" onchange="toggleNotifications()"/><div class="toggle-track"></div></label>
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-title">Data</div>
+      <div class="setting-row">
+        <div class="setting-label">Reset this week's data<small>Keeps full history intact</small></div>
+        <button class="sm-btn" style="color:var(--accent2);border-color:var(--accent2)" onclick="resetWeek()">Reset Week</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Clear all data<small>Wipes everything permanently</small></div>
+        <button class="sm-btn" onclick="clearAll()">Clear All</button>
+      </div>
+    </div>
+    <div class="info-box">
+      <strong>Account safety rule:</strong> The Embassy portal flags accounts for rapid logins. The button lockout prevents accidental double-logging. Check every 3–4 hours for best results without triggering a ban.
+    </div>
+  </div>
+</div>
+
+<div class="notif-banner" id="notif-banner">✓ Check logged!</div>
+<footer>SlotWatcher · Built for F1 applicants in Ghana · All data stored locally</footer>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let logs        = JSON.parse(localStorage.getItem('sw_logs') || '[]');
+let intervalHrs = parseInt(localStorage.getItem('sw_interval') || '4');
+let lockoutMins = parseInt(localStorage.getItem('sw_lockout')  || '40');
+let notifEnabled= localStorage.getItem('sw_notif') === 'true';
+let startDate   = localStorage.getItem('sw_startdate') || '';
+let weekReset   = parseInt(localStorage.getItem('sw_weekreset') || '0');
+let swReg       = null;
+let countdownTimer = null;
+let lockoutTimer   = null;
+
+const LOCKOUT_MS = () => lockoutMins * 60000;
+
+// ── Init ───────────────────────────────────────────────────
+function init() {
+  document.getElementById('interval-select').value = intervalHrs;
+  document.getElementById('lockout-select').value  = lockoutMins;
+  document.getElementById('notif-toggle').checked  = notifEnabled;
+  if (startDate) document.getElementById('start-date').value = startDate;
+  renderLog(); updateStats(); updateUrgency(); startCountdown();
+  updateButtonLockState(); checkSWStatus(); renderAnalytics();
+}
+
+// ── Tabs ───────────────────────────────────────────────────
+function switchTab(name) {
+  const names = ['tracker','analytics','settings'];
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', names[i]===name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'analytics') renderAnalytics();
+}
+
+// ── Log a check ────────────────────────────────────────────
+function logCheck() {
+  const btn = document.getElementById('check-btn');
+  if (btn.disabled) return;
+  // Hard lockout guard (double protection)
+  if (logs.length > 0 && Date.now() - logs[0] < LOCKOUT_MS()) {
+    showBanner('⛔ Too soon — wait ' + formatMSS(LOCKOUT_MS() - (Date.now()-logs[0])), 'err');
+    return;
+  }
+  logs.unshift(Date.now());
+  if (logs.length > 200) logs = logs.slice(0,200);
+  localStorage.setItem('sw_logs', JSON.stringify(logs));
+  renderLog(); updateStats(); startCountdown(); lockButton();
+  scheduleNotification(); renderAnalytics();
+  showBanner('✓ Logged! Next check in '+intervalHrs+'h', 'success');
+}
+
+// ── Button lock ────────────────────────────────────────────
+function lockButton() {
+  const btn  = document.getElementById('check-btn');
+  const wrap = document.getElementById('cooldown-wrap');
+  btn.disabled = true;
+  btn.classList.add('just-checked');
+  wrap.classList.add('visible');
+  runLockoutTick();
+}
+
+function runLockoutTick() {
+  if (lockoutTimer) clearInterval(lockoutTimer);
+  lockoutTimer = setInterval(() => {
+    if (!logs.length) { unlockButton(); return; }
+    const elapsed = Date.now() - logs[0];
+    const pct = Math.min(elapsed / LOCKOUT_MS() * 100, 100);
+    document.getElementById('cooldown-bar').style.width = pct + '%';
+    const btn = document.getElementById('check-btn');
+    if (elapsed >= LOCKOUT_MS()) {
+      unlockButton();
+    } else {
+      const rem = LOCKOUT_MS() - elapsed;
+      btn.textContent = '🔒  Locked — ' + formatMSS(rem) + ' remaining';
+    }
+  }, 1000);
+}
+
+function unlockButton() {
+  if (lockoutTimer) { clearInterval(lockoutTimer); lockoutTimer = null; }
+  const btn = document.getElementById('check-btn');
+  btn.disabled = false;
+  btn.classList.remove('just-checked');
+  btn.textContent = '✓  I Just Checked the Portal';
+  document.getElementById('cooldown-wrap').classList.remove('visible');
+  document.getElementById('cooldown-bar').style.width = '0%';
+}
+
+function updateButtonLockState() {
+  if (!logs.length) return;
+  if (Date.now() - logs[0] < LOCKOUT_MS()) lockButton();
+}
+
+// ── Render log ─────────────────────────────────────────────
+function renderLog() {
+  const el = document.getElementById('log-list');
+  if (!logs.length) { el.innerHTML = '<div class="log-empty">No checks logged yet.</div>'; return; }
+  el.innerHTML = logs.slice(0,20).map((ts,i) => {
+    const timeStr = new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    let gapHtml = '';
+    if (i < logs.length-1) {
+      const gapH = (ts - logs[i+1]) / 3600000;
+      const cls = gapH < 2 ? 'bad' : gapH < 3 ? 'warn' : 'safe';
+      gapHtml = `<span class="log-gap ${cls}">${formatDuration(ts-logs[i+1])} gap</span>`;
+    }
+    return `<div class="log-entry"><span class="log-time">${timeStr}</span>${gapHtml}</div>`;
+  }).join('');
+}
+
+// ── Stats ──────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-total').textContent = logs.length;
+  document.getElementById('stat-week').textContent  = getWeekLogs().length;
+  document.getElementById('stat-today').textContent = getTodayLogs().length;
+}
+function getWeekLogs()  { return logs.filter(ts => ts >= weekStart()); }
+function getTodayLogs() { const d=new Date();d.setHours(0,0,0,0);return logs.filter(ts=>ts>=d.getTime()); }
+function weekStart() {
+  const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());
+  return Math.max(d.getTime(), weekReset);
+}
+
+// ── Countdown ──────────────────────────────────────────────
+function startCountdown() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownTimer = setInterval(tick, 1000); tick();
+}
+function tick() {
+  const el=document.getElementById('countdown'), sub=document.getElementById('countdown-sub');
+  if (!logs.length) { el.textContent='--:--:--'; el.className='countdown-display'; sub.textContent='Log your first check to start the timer'; return; }
+  const rem = logs[0] + intervalHrs*3600000 - Date.now();
+  if (rem <= 0) {
+    el.textContent = formatHMS(Math.abs(rem))+' ago'; el.className='countdown-display overdue';
+    sub.textContent = '⚠ Overdue — go check the portal now!';
+  } else {
+    el.textContent = formatHMS(rem);
+    el.className = rem/3600000 < 0.5 ? 'countdown-display urgent' : 'countdown-display';
+    sub.textContent = rem/3600000 < 0.5 ? 'Almost time — get ready' : 'Check at '+new Date(logs[0]+intervalHrs*3600000).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  }
+}
+
+// ── Urgency ────────────────────────────────────────────────
+function updateUrgency() {
+  const box=document.getElementById('urgency-box'), txt=document.getElementById('urgency-text');
+  if (!startDate) { box.style.display='none'; return; }
+  const daysLeft = Math.ceil((new Date(startDate)-new Date())/86400000);
+  box.style.display='block';
+  if (daysLeft<=0) { txt.textContent='🚨 Program start date has passed!'; box.style.borderColor='var(--danger)'; }
+  else if (daysLeft<=60) { txt.textContent=`⚡ ${daysLeft} days to start — you qualify for an expedited appointment now!`; box.style.borderColor='var(--accent2)'; }
+  else { const exp=new Date(new Date(startDate).getTime()-60*86400000); txt.textContent=`📅 ${daysLeft} days to start. Expedited eligibility: ${exp.toDateString().slice(4)}.`; box.style.borderColor='rgba(0,198,255,.2)'; }
+}
+
+// ── Analytics ──────────────────────────────────────────────
+function renderAnalytics() { renderBarChart(); renderWeekSummary(); renderHeatmap(); renderAnalyticsStats(); }
+
+function renderBarChart() {
+  const days = getLast7Days(), max = Math.max(...days.map(d=>d.count),1);
+  document.getElementById('bar-chart').innerHTML = days.map(d => {
+    const pct = (d.count/max)*100, cls = d.count===0?'zero':d.risky>0?'med':'ok';
+    return `<div class="bar-col"><span class="bar-count">${d.count||''}</span><div class="bar-track"><div class="bar-fill ${cls}" style="height:${pct}%"></div></div><span class="bar-day">${d.label}</span></div>`;
+  }).join('');
+}
+
+function getLast7Days() {
+  return Array.from({length:7},(_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(6-i)); d.setHours(0,0,0,0); const n=new Date(d); n.setDate(n.getDate()+1);
+    const dl=logs.filter(ts=>ts>=d.getTime()&&ts<n.getTime()).sort((a,b)=>a-b);
+    let risky=0; for(let j=1;j<dl.length;j++) if(dl[j]-dl[j-1]<10800000) risky++;
+    return {label:['Su','Mo','Tu','We','Th','Fr','Sa'][d.getDay()],count:dl.length,risky};
+  });
+}
+
+function renderWeekSummary() {
+  const wl=getWeekLogs().sort((a,b)=>a-b); let safe=0,risky=0;
+  for(let i=1;i<wl.length;i++) (wl[i]-wl[i-1]>=10800000?safe:risky)++;
+  const avgGap=wl.length>1?formatDuration((wl[wl.length-1]-wl[0])/(wl.length-1)):'—';
+  document.getElementById('week-summary').innerHTML = `
+    <div class="week-row"><span class="week-row-label">Total checks this week</span><span class="week-row-val">${wl.length}</span></div>
+    <div class="week-row"><span class="week-row-label">Safe gaps (≥3h)</span><span class="week-row-val" style="color:var(--success)">${safe}</span></div>
+    <div class="week-row"><span class="week-row-label">Risky gaps (&lt;3h)</span><span class="week-row-val" style="color:var(--danger)">${risky}</span></div>
+    <div class="week-row"><span class="week-row-label">Avg gap between checks</span><span class="week-row-val">${avgGap}</span></div>`;
+  const box=document.getElementById('risky-box'), txt=document.getElementById('risky-text');
+  if(risky>0){box.style.display='block';box.style.borderColor='rgba(255,77,109,.4)';box.style.background='rgba(255,77,109,.05)';txt.style.color='var(--danger)';txt.textContent=`⚠ ${risky} check${risky>1?'s':''} this week had gaps under 3 hours. This risks a temporary account ban.`;}
+  else box.style.display='none';
+}
+
+function renderHeatmap() {
+  document.getElementById('heatmap').innerHTML = Array.from({length:28},(_,i)=>{
+    const d=new Date(); d.setDate(d.getDate()-(27-i)); d.setHours(0,0,0,0);
+    const n=new Date(d); n.setDate(n.getDate()+1);
+    const c=Math.min(logs.filter(ts=>ts>=d.getTime()&&ts<n.getTime()).length,5);
+    return `<div class="heatmap-cell" data-count="${c}" title="${d.toDateString().slice(4,10)}: ${c} check${c!==1?'s':''}"></div>`;
+  }).join('');
+}
+
+function renderAnalyticsStats() {
+  const dc={}; logs.forEach(ts=>{const k=new Date(ts).toDateString();dc[k]=(dc[k]||0)+1;});
+  const keys=Object.keys(dc);
+  document.getElementById('stat-best').textContent = keys.length ? dc[keys.reduce((a,b)=>dc[a]>dc[b]?a:b)] : '—';
+  document.getElementById('stat-avg').textContent  = keys.length ? (logs.length/keys.length).toFixed(1) : '—';
+  let streak=0; for(let i=0;i<60;i++){const d=new Date();d.setDate(d.getDate()-i);d.setHours(0,0,0,0);const n=new Date(d);n.setDate(n.getDate()+1);if(logs.some(ts=>ts>=d.getTime()&&ts<n.getTime()))streak++;else break;}
+  document.getElementById('stat-streak').textContent = streak+'d';
+}
+
+// ── Reset / Clear ──────────────────────────────────────────
+function resetWeek() {
+  if (!confirm("Reset this week's count? Your full log history stays intact.")) return;
+  weekReset = Date.now();
+  localStorage.setItem('sw_weekreset', weekReset);
+  updateStats(); renderAnalytics(); showBanner('Week reset ✓', 'success');
+}
+function clearLog() {
+  if (!confirm('Clear all check history? This cannot be undone.')) return;
+  clearAll();
+}
+function clearAll() {
+  if (!confirm('Wipe ALL data permanently?')) return;
+  logs=[]; weekReset=0;
+  ['sw_logs','sw_fireat','sw_weekreset'].forEach(k=>localStorage.removeItem(k));
+  renderLog(); updateStats(); renderAnalytics(); startCountdown(); unlockButton();
+  showBanner('All data cleared', 'success');
+}
+
+// ── Settings ───────────────────────────────────────────────
+function saveInterval() { intervalHrs=parseInt(document.getElementById('interval-select').value); localStorage.setItem('sw_interval',intervalHrs); startCountdown(); }
+function saveLockout()  { lockoutMins=parseInt(document.getElementById('lockout-select').value);  localStorage.setItem('sw_lockout',lockoutMins); }
+function saveStartDate(){ startDate=document.getElementById('start-date').value; localStorage.setItem('sw_startdate',startDate); updateUrgency(); }
+
+// ── Service Worker ─────────────────────────────────────────
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) { setSWStatus('Not supported',false); return null; }
+  try {
+    const reg = await navigator.serviceWorker.register('./sw.js',{scope:'./'});
+    await navigator.serviceWorker.ready; swReg=reg; setSWStatus('Active ✓',true);
+    if('periodicSync' in reg){try{await reg.periodicSync.register('slotwatcher-keepalive',{minInterval:3600000});}catch(_){}}
+    return reg;
+  } catch(e) { setSWStatus('Failed',false); return null; }
+}
+function setSWStatus(text,ok) {
+  const b=document.getElementById('sw-status-badge'),s=document.getElementById('sw-status-text');
+  if(!b)return; b.textContent=text; b.style.background=ok?'rgba(0,230,118,.15)':'rgba(255,77,109,.15)'; b.style.color=ok?'var(--success)':'var(--danger)';
+  if(s) s.textContent=ok?'Works when tab is closed':'Background notifications unavailable';
+}
+async function checkSWStatus() {
+  if(!('serviceWorker' in navigator)){setSWStatus('Not supported',false);return;}
+  setSWStatus('Checking…',false);
+  try{const r=await navigator.serviceWorker.getRegistration('./sw.js');if(r&&r.active){swReg=r;setSWStatus('Active ✓',true);}else setSWStatus('Not registered',false);}catch{setSWStatus('Error',false);}
+}
+function toggleNotifications() {
+  notifEnabled=document.getElementById('notif-toggle').checked; localStorage.setItem('sw_notif',notifEnabled);
+  if(notifEnabled){Notification.requestPermission().then(async p=>{if(p!=='granted'){document.getElementById('notif-toggle').checked=false;notifEnabled=false;showBanner('Notifications blocked','err');}else{await registerSW();showBanner('Notifications enabled ✓','success');scheduleNotification();}});}
+  else{localStorage.removeItem('sw_fireat');sendToSW({type:'CANCEL'});}
+}
+function scheduleNotification() {
+  if(!notifEnabled||Notification.permission!=='granted'||!logs.length)return;
+  const fireAt=logs[0]+intervalHrs*3600000; localStorage.setItem('sw_fireat',fireAt);
+  sendToSW({type:'SCHEDULE',fireAt,intervalHours:intervalHrs});
+}
+function sendToSW(msg) {
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.ready.then(r=>{if(r.active)r.active.postMessage(msg);}).catch(()=>{});
+}
+async function restoreSWSchedule() {
+  if(!notifEnabled||Notification.permission!=='granted')return;
+  const fireAt=parseInt(localStorage.getItem('sw_fireat')||'0'); if(!fireAt)return;
+  await registerSW(); sendToSW({type:'SCHEDULE',fireAt,intervalHours:intervalHrs});
+}
+
+// ── Helpers ────────────────────────────────────────────────
+function showBanner(msg,type){const b=document.getElementById('notif-banner');b.textContent=msg;b.className='notif-banner'+(type==='warn'?' warn-banner':type==='err'?' err-banner':'');b.classList.add('show');setTimeout(()=>b.classList.remove('show'),3000);}
+function formatHMS(ms){const s=Math.floor(ms/1000);return`${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`;}
+function formatMSS(ms){const s=Math.floor(ms/1000);return`${pad(Math.floor(s/60))}:${pad(s%60)}`;}
+function formatDuration(ms){const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);return h>0?`${h}h ${m}m`:`${m}m`;}
+function pad(n){return String(n).padStart(2,'0');}
+
+// ── Boot ───────────────────────────────────────────────────
+init();
+restoreSWSchedule();
+</script>
+</body>
+</html>
